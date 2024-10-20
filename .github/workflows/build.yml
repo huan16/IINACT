@@ -18,12 +18,14 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Download Dalamud
       shell: pwsh
       run: |
-        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/stg/latest.zip -OutFile latest.zip
-        Expand-Archive -Force latest.zip /tmp/dalamud
+        $versionInfo = Invoke-RestMethod -Uri "https://aonyx.ffxiv.wang/Dalamud/Release/VersionInfo"
+        $downloadUrl = $versionInfo.downloadUrl
+        Invoke-WebRequest -Uri $downloadUrl -OutFile latest.7z
+        7z x latest.7z -o/tmp/dalamud
     - name: Build
       run: dotnet build -c release
     - name: Prepare Build Artifact
@@ -46,8 +48,8 @@ jobs:
         }
         Write-Output "RELEASE_VERSION=$($build.AssemblyVersion)" >> $env:GITHUB_ENV
         $repo.AssemblyVersion = $repo.TestingAssemblyVersion = $build.AssemblyVersion
-        $repo.DownloadLinkInstall = 'https://github.com/marzent/IINACT/releases/download/v' + $repo.AssemblyVersion + '/IINACT.zip'
-        $repo.DownloadLinkTesting =  'https://github.com/marzent/IINACT/releases/download/v' + $repo.TestingAssemblyVersion + '/IINACT.zip'
+        $repo.DownloadLinkInstall = 'https://github.com/Menci/IINACT/releases/download/v' + $repo.AssemblyVersion + '/IINACT.zip'
+        $repo.DownloadLinkTesting =  'https://github.com/Menci/IINACT/releases/download/v' + $repo.TestingAssemblyVersion + '/IINACT.zip'
         $repo.DownloadLinkUpdate = $repo.DownloadLinkInstall
         $repo | ConvertTo-Json | % { "[`n" + $_ + "`n]" } | Set-Content 'repo.json'
     - name: Create Release
