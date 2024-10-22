@@ -83,6 +83,7 @@ public sealed class Plugin : IDalamudPlugin
                                                     DataManager.Language.ToString() == "ChineseSimplified", HttpClient, Log);
         
         fetchDeps.GetFfxivPlugin();
+        var opcodesDotJsonc = fetchDeps.FetchOpcodesDotJsonc();
         
         PluginLogTraceListener = new PluginLogTraceListener();
         Trace.Listeners.Add(PluginLogTraceListener);
@@ -96,7 +97,7 @@ public sealed class Plugin : IDalamudPlugin
         Advanced_Combat_Tracker.ActGlobals.oFormActMain.LogFilePath = Configuration.LogFilePath;
 
         FfxivActPluginWrapper = new FfxivActPluginWrapper(Configuration, DataManager.Language, ChatGui, Framework, Condition);
-        OverlayPlugin = InitOverlayPlugin();
+        OverlayPlugin = InitOverlayPlugin(opcodesDotJsonc);
 
         IpcProviders = new IpcProviders(PluginInterface);
 
@@ -139,9 +140,10 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(EndEncCommandName);
     }
 
-    private RainbowMage.OverlayPlugin.PluginMain InitOverlayPlugin()
+    private RainbowMage.OverlayPlugin.PluginMain InitOverlayPlugin(string opcodesDotJsonc)
     {
         var container = new RainbowMage.OverlayPlugin.TinyIoCContainer();
+        container.Register(opcodesDotJsonc, "opcodes.jsonc");
         
         var logger = new RainbowMage.OverlayPlugin.Logger(Log);
         container.Register(logger);

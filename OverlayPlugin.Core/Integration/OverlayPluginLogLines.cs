@@ -59,14 +59,7 @@ namespace RainbowMage.OverlayPlugin.NetworkProcessors
 
             try
             {
-                var assembly = Assembly.GetExecutingAssembly();
-                var resourceName = assembly.GetManifestResourceNames().Single(str => str.EndsWith("opcodes.jsonc"));
-                string jsonData;
-                using (var stream = assembly.GetManifestResourceStream(resourceName))
-                using (var reader = new StreamReader(stream))
-                {
-                    jsonData = reader.ReadToEnd();
-                }
+                var jsonData = container.Resolve<string>("opcodes.jsonc");
 
                 config = JsonConvert.DeserializeAnonymousType(jsonData, config);
             }

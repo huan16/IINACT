@@ -45,14 +45,12 @@
 
     <ItemGroup>
         <None Remove="resources\act-overlays\overlays.json" />
-        <None Remove="resources\opcodes.jsonc" />
         <None Remove="resources\reserved_log_lines.json" />
     </ItemGroup>
     <ItemGroup>
         <EmbeddedResource Include="resources\act-overlays\overlays.json" />
     </ItemGroup>
     <ItemGroup>
-        <EmbeddedResource Include="resources\opcodes.jsonc" />
         <EmbeddedResource Include="resources\reserved_log_lines.json" />
     </ItemGroup>
     <ItemGroup>

@@ -9,6 +9,8 @@ public class FetchDependencies
     private const string VersionUrlChinese = "https://cninact.diemoe.net/CN解析/版本.txt";
     private const string PluginUrlGlobal = "https://www.iinact.com/updater/download";
     private const string PluginUrlChinese = "https://cninact.diemoe.net/CN解析/FFXIV_ACT_Plugin.dll";
+    private const string OpcodesDotJsoncGlobal = "https://raw.githubusercontent.com/OverlayPlugin/OverlayPlugin/main/OverlayPlugin.Core/resources/opcodes.jsonc";
+    private const string OpcodesDotJsoncChinese = "https://assets.diemoe.net/OverlayPlugin/OverlayPlugin.Core/resources/opcodes.jsonc";
 
     private Version PluginVersion { get; }
     private string DependenciesDir { get; }
@@ -95,5 +97,12 @@ public class FetchDependencies
         using var zipFileStream = new FileStream(path, FileMode.Create);
         downloadStream.CopyTo(zipFileStream);
         zipFileStream.Close();
+    }
+
+    public string FetchOpcodesDotJsonc()
+    {
+        var url = IsChinese ? OpcodesDotJsoncChinese : OpcodesDotJsoncGlobal;
+        using var cancelAfterDelay = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        return HttpClient.GetStringAsync(url, cancelAfterDelay.Token).Result;
     }
 }
