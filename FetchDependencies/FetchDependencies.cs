@@ -1,16 +1,21 @@
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 using Dalamud.Plugin.Services;
 
 namespace FetchDependencies;
 
-public class FetchDependencies
+public partial class FetchDependencies
 {
     private const string VersionUrlGlobal = "https://www.iinact.com/updater/version";
-    private const string VersionUrlChinese = "https://cninact.diemoe.net/CN解析/版本.txt";
+    private const string VersionUrlChinese = "https://cdn.diemoe.net/files/ACT.DieMoe/Packs/FFXIV_ACT_Plugin/chinese.version";
     private const string PluginUrlGlobal = "https://www.iinact.com/updater/download";
-    private const string PluginUrlChinese = "https://cninact.diemoe.net/CN解析/FFXIV_ACT_Plugin.dll";
+    private const string PluginUrlChinese = "https://cdn.diemoe.net/files/ACT.DieMoe/Packs/FFXIV_ACT_Plugin/chinese.zip";
     private const string OpcodesDotJsoncGlobal = "https://raw.githubusercontent.com/OverlayPlugin/OverlayPlugin/main/OverlayPlugin.Core/resources/opcodes.jsonc";
     private const string OpcodesDotJsoncChinese = "https://assets.diemoe.net/OverlayPlugin/OverlayPlugin.Core/resources/opcodes.jsonc";
+
+    // "display_at=2.7.1.9-CN7.01"
+    [GeneratedRegex(@"display_at\s*=\s*(\d+\.\d+\.\d+\.\d+)", RegexOptions.Multiline)]
+    private static partial Regex ChineseVersionRegex();
 
     private Version PluginVersion { get; }
     private string DependenciesDir { get; }
@@ -36,27 +41,22 @@ public class FetchDependencies
         if (!NeedsUpdate(pluginPath))
             return;
 
-        if (IsChinese)
-            DownloadFile(PluginUrlChinese, pluginPath);
-        else
+        if (!File.Exists(pluginZipPath))
+            DownloadFile(IsChinese ? PluginUrlChinese : PluginUrlGlobal, pluginZipPath);
+        try
         {
-            if (!File.Exists(pluginZipPath))
-                DownloadFile(PluginUrlGlobal, pluginZipPath);
-            try
-            {
-                ZipFile.ExtractToDirectory(pluginZipPath, DependenciesDir, true);
-            }
-            catch (InvalidDataException)
-            {
-                File.Delete(pluginZipPath);
-                DownloadFile(PluginUrlGlobal, pluginZipPath);
-                ZipFile.ExtractToDirectory(pluginZipPath, DependenciesDir, true);
-            }
-            File.Delete(pluginZipPath);
-
-            foreach (var deucalionDll in Directory.GetFiles(DependenciesDir, "deucalion*.dll"))
-                File.Delete(deucalionDll);
+            ZipFile.ExtractToDirectory(pluginZipPath, DependenciesDir, true);
         }
+        catch (InvalidDataException)
+        {
+            File.Delete(pluginZipPath);
+            DownloadFile(IsChinese ? PluginUrlChinese : PluginUrlGlobal, pluginZipPath);
+            ZipFile.ExtractToDirectory(pluginZipPath, DependenciesDir, true);
+        }
+        File.Delete(pluginZipPath);
+
+        foreach (var deucalionDll in Directory.GetFiles(DependenciesDir, "deucalion*.dll"))
+            File.Delete(deucalionDll);
 
         var patcher = new Patcher(PluginVersion, DependenciesDir, PluginLog);
         patcher.MainPlugin();
@@ -79,6 +79,19 @@ public class FetchDependencies
             var remoteVersionString = HttpClient
                                       .GetStringAsync(IsChinese ? VersionUrlChinese : VersionUrlGlobal,
                                                       cancelAfterDelay.Token).Result;
+            if (IsChinese) {
+                var regex = ChineseVersionRegex();
+                var match = regex.Match(remoteVersionString);
+                if (match.Success)
+                {
+                    remoteVersionString = match.Groups[1].Value;
+                }
+                else
+                {
+                    PluginLog.Error($"Failed to parse Chinese Plugin version string: {remoteVersionString}");
+                    return false;
+                }
+            }
             var remoteVersion = new Version(remoteVersionString);
             return remoteVersion > plugin.Version;
         }
