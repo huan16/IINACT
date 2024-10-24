@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
 
 namespace FetchDependencies;
 
@@ -13,15 +14,17 @@ public partial class FetchDependencies
     private const string OpcodesDotJsoncGlobal = "https://raw.githubusercontent.com/OverlayPlugin/OverlayPlugin/main/OverlayPlugin.Core/resources/opcodes.jsonc";
     private const string OpcodesDotJsoncChinese = "https://assets.diemoe.net/OverlayPlugin/OverlayPlugin.Core/resources/opcodes.jsonc";
 
-    // "display_at=2.7.1.9-CN7.01"
-    [GeneratedRegex(@"display_at\s*=\s*(\d+\.\d+\.\d+\.\d+)", RegexOptions.Multiline)]
-    private static partial Regex ChineseVersionRegex();
+    // "build_version=20241022.001"
+    [GeneratedRegex(@"build_version\s*=\s*([0-9.]+)", RegexOptions.Multiline)]
+    private static partial Regex DieMoeBuildVersionRegex();
 
     private Version PluginVersion { get; }
     private string DependenciesDir { get; }
     private bool IsChinese { get; }
     private HttpClient HttpClient { get; }
     private IPluginLog PluginLog { get; }
+
+    public static string RemoteDieMoeBuildVersion = "";
 
     public FetchDependencies(Version version, string assemblyDir, bool isChinese, HttpClient httpClient, IPluginLog pluginLog)
     {
@@ -80,18 +83,19 @@ public partial class FetchDependencies
                                       .GetStringAsync(IsChinese ? VersionUrlChinese : VersionUrlGlobal,
                                                       cancelAfterDelay.Token).Result;
             if (IsChinese) {
-                var regex = ChineseVersionRegex();
-                var match = regex.Match(remoteVersionString);
-                if (match.Success)
+                var match = DieMoeBuildVersionRegex().Match(remoteVersionString);
+                var buildVersion = match.Success ? match.Groups[1].Value : string.Empty;
+                if (buildVersion.IsNullOrEmpty())
                 {
-                    remoteVersionString = match.Groups[1].Value;
-                }
-                else
-                {
-                    PluginLog.Error($"Failed to parse Chinese Plugin version string: {remoteVersionString}");
+                    PluginLog.Error($"Failed to parse DieMoe Plugin version string: {remoteVersionString}");
                     return false;
                 }
+
+                RemoteDieMoeBuildVersion = buildVersion;
+                var localVersion = plugin.GetDieMoeBuildVersion();
+                return buildVersion != localVersion;
             }
+
             var remoteVersion = new Version(remoteVersionString);
             return remoteVersion > plugin.Version;
         }

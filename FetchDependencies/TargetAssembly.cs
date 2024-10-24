@@ -1,4 +1,5 @@
-﻿using Mono.Cecil;
+﻿using Dalamud.Utility;
+using Mono.Cecil;
 
 namespace FetchDependencies;
 
@@ -105,6 +106,19 @@ internal class TargetAssembly : IDisposable
         return false;
     }
 
+    public string GetDieMoeBuildVersion()
+    {
+        foreach (var type in Assembly.MainModule.Types)
+        {
+            foreach (var field in type.Fields)
+            {
+                if (field.Name == "DieMoeBuildVersion")
+                    return field.Constant.ToString() ?? "";
+            }
+        }
+        return "";
+    }
+
     public void WriteOut()
     {
         if (!ApiVersionMatches())
@@ -114,6 +128,14 @@ internal class TargetAssembly : IDisposable
                 BaseType = Assembly.MainModule.TypeSystem.Object
             };
             Assembly.MainModule.Types.Add(wasHere);
+        }
+
+        if (!FetchDependencies.RemoteDieMoeBuildVersion.IsNullOrEmpty())
+        {
+            // Define a string constant with Mono.Cecil
+            var field = new FieldDefinition("DieMoeBuildVersion", FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, Assembly.MainModule.TypeSystem.String);
+            field.Constant = FetchDependencies.RemoteDieMoeBuildVersion;
+            Assembly.MainModule.Types.First().Fields.Add(field);
         }
 
         var patchedPath = AssemblyPath + ".patched";
